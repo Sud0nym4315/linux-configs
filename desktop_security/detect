@@ -1,0 +1,45 @@
+#!/bin/bash
+
+function notify-send() {
+    #Detect the name of the display in use
+    local display=":$(ls /tmp/.X11-unix/* | sed 's#/tmp/.X11-unix/X##' | head -n 1)"
+
+    #Detect the user using such display
+    local user=$(who | grep '('$display')' | awk '{print $1}' | head -n 1)
+
+    #Detect the id of the user
+    local uid=$(id -u $user)
+
+    sudo -u $user DISPLAY=$display DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus notify-send "$@"
+}
+
+
+message="Login detected - $(date +%H:%M:%S_%d/%m/%y)" # Formatted for human readability
+alert="/root/sysadmin/alerts/logins/$(date +%y%m%d_%H%M%S).txt" # Formatted for machine organization and readability
+webcam_cap_path="/root/security/login_captures"
+webcam_cap="$(date +%y%m%d_%H%M%S).png"
+
+# Get geolocation through gmaps API/similar. Store as coords in var and push
+
+# Cache notification
+echo $message >> $alert
+
+# Ping notification server.
+# If not connected, do nothing
+# When connected to the internet, continue by sending contents of cached file
+
+# TODO: Send notifications to /var/log/auth.log via logger command
+
+
+fswebcam --png -1 --greyscale --save $webcam_cap_path/$webcam_cap
+scp $webcam_cap_path/$webcam_cap user@server:/var/www/html/project1/images/logins/$webcam_cap
+curl -i -X POST server:9000/logins -H "Content-Type: text" --data-binary "@$alert" -H "Attach: http://192.168.193.4:3>
+echo login notification posted
+echo captured webcam
+
+# Alert user
+##BUG: not showing capture
+notify-send "Security alert" "$message\nSent to push notification server" -i $webcam_cap -t 900000
+
+#spd-say -y "English (Received Pronunciation)+Robosoft5" -r -10 "Potential security threat detected. The photo taken >
+#open $webcam_cap
