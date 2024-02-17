@@ -1,12 +1,8 @@
-Linux PC preventative/detective control scripts
+The "detect" script needs the followng things to run as I have it:
 
-Prerequisites:
-- ntfy server
-- web server
-- Hosts connected via SDN (e.g ZeroTier)
+- A sudoer's entry that allows a non-root user to execute without a password
+- A web server to send login captures to
+- A ntfy server to send notifications to subscribed devices
 
-Process:
-1) script executes upon login. 
-2) Fswebcam takes front-facing picture
-3) PC sends webcam capture to HTTP server over SSH
-4) PC then sends HTTP post request to ntfy server with a link to the image
+
+The script takes a front-facing webcam picture, sends it over SSH to a web server to host the image, and sends a POST request to an "ntfy" server with the link to the webcam capture.
