@@ -16,8 +16,8 @@ function notify-send() {
 }
 
 
-message="Login detected - $(date +%H:%M:%S_%d/%m/%y)" # Formatted for human readability
-alert="/root/sysadmin/alerts/logins/$(date +%y%m%d_%H%M%S).txt" # Formatted for machine organization and readability
+message="Login detected - $(date +%H:%M:%S_%d/%m/%y)" 
+alert="/root/sysadmin/alerts/logins/$(date +%y%m%d_%H%M%S).txt" 
 webcam_cap_path="/root/security/login_captures"
 webcam_cap="$(date +%y%m%d_%H%M%S).png"
 
@@ -26,6 +26,7 @@ webcam_cap="$(date +%y%m%d_%H%M%S).png"
 # Cache notification
 echo $message >> $alert
 
+# TODO
 # Ping notification server.
 # If not connected, do nothing
 # When connected to the internet, continue by sending contents of cached file
@@ -34,8 +35,12 @@ echo $message >> $alert
 
 
 fswebcam --png -1 --greyscale --save $webcam_cap_path/$webcam_cap
+
+# Send webcam capture to remote web server over SSH. Implies ssh keys, no passwd req
 scp $webcam_cap_path/$webcam_cap user@server:/var/www/html/project1/images/logins/$webcam_cap
-curl -i -X POST server:9000/logins -H "Content-Type: text" --data-binary "@$alert" -H "Attach: http://192.168.193.4:3>
+
+# Push notification to ntfy server with link to image
+curl -i -X POST server:9000/logins -H "Content-Type: text" --data-binary "@$alert" -H "Attach: http://192.168.193.4:3000>
 echo login notification posted
 echo captured webcam
 
@@ -43,5 +48,5 @@ echo captured webcam
 ##BUG: not showing capture
 notify-send "Security alert" "$message\nSent to push notification server" -i $webcam_cap -t 900000
 
-#spd-say -y "English (Received Pronunciation)+Robosoft5" -r -10 "Potential security threat detected. The photo taken >
+#spd-say -y "English (Received Pronunciation)+Robosoft5" -r -10 "Potential security threat detected."
 #open $webcam_cap
