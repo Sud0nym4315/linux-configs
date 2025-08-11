@@ -1,7 +1,5 @@
 #!/bin/bash
 
-
-
 # Drop-in replacement for notify-send in case of any permission/GUI issues
 #function notify-send() {
     #Detect the name of the display in use
