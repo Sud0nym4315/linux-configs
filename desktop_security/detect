@@ -1,52 +1,64 @@
 #!/bin/bash
-# Store as root script, add sudoers entry, execute in wm upon login
 
-# libnotify drop-in function due to common permissions error
-function notify-send() {
+
+
+# Drop-in replacement for notify-send in case of any permission/GUI issues
+#function notify-send() {
     #Detect the name of the display in use
-    local display=":$(ls /tmp/.X11-unix/* | sed 's#/tmp/.X11-unix/X##' | head -n 1)"
+#    local display=":$(ls /tmp/.X11-unix/* | sed 's#/tmp/.X11-unix/X##' | head -n 1)"
 
     #Detect the user using such display
-    local user=$(who | grep '('$display')' | awk '{print $1}' | head -n 1)
+#    local user=$(who | grep '('$display')' | awk '{print $1}' | head -n 1)
 
     #Detect the id of the user
-    local uid=$(id -u $user)
+#    local uid=$(id -u $user)
 
-    sudo -u $user DISPLAY=$display DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus notify-send "$@"
-}
+#    sudo -u $user DISPLAY=$display DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus notify-send "$@"
+#}
 
 
-message="Login detected - $(date +%H:%M:%S_%d/%m/%y)" 
-alert="/root/sysadmin/alerts/logins/$(date +%y%m%d_%H%M%S).txt" 
-webcam_cap_path="/root/security/login_captures"
+# Store telemetry as variables for storage and/or push to server
+device="Device: $(hostnamectl | grep Chassis | cut -d ':' -f 2) ($(hostnamectl | grep Vendor | cut -d ':' -f 2) $(hostnamectl | grep Model | cut -d ':' -f 2))"
+machine_id="$(hostnamectl | grep Machine)"
+net_id="Network ID: $(zerotier-cli info | cut -d ' ' -f 3)"
+telemetry="$(hostnamectl | base64 | tr -d '[:space:]')"
+message="Login detected - $(date +%H:%M:%S_%d/%m/%y)" # Formatted for human readability
+alert="/root/security/alerts/logins/$(date +%y%m%d_%H%M%S).txt" # Formatted for machine organization and readability
+webcam_cap_path="/root/security/alerts/logins/captures"
 webcam_cap="$(date +%y%m%d_%H%M%S).png"
 
-# Get geolocation through gmaps API/similar. Store as coords in var and push
+# TODO: gather geolocation information; nearby wireless networks and cross-reference with 
+# WiGLE? https://wigle.net/
 
-# Cache notification
+# Cache notification into local file
+echo $device >> $alert
+echo $machine_id >> $alert
+echo $net_id >> $alert
 echo $message >> $alert
+echo >> $alert
+echo "Telemetry embedded as base64 in image" >> $alert
 
 # TODO
-# Ping notification server.
-# If not connected, do nothing
-# When connected to the internet, continue by sending contents of cached file
+# - Ping notification server.
+# - If not connected, cache only
+# - When connected to the internet, continue by sending contents of cached file
 
-# TODO: Send notifications to /var/log/auth.log via logger command
+# TODO: Send notifications to /var/log/auth.log via logger command for more standard caching mechanism
 
-
+# Take webcam picture, save in variable path, embed base64 telemetry data, push to ntfy
 fswebcam --png -1 --greyscale --save $webcam_cap_path/$webcam_cap
-
-# Send webcam capture to remote web server over SSH. Implies passwordless authentication
-scp $webcam_cap_path/$webcam_cap user@server:/var/www/html/project1/images/logins/$webcam_cap
-
-# Push notification to ntfy server with link to image
-curl -i -X POST server:9000/logins -H "Content-Type: text" --data-binary "@$alert" -H "Attach: http://192.168.193.4:3000>
+echo -e "\n\n\n" >> $webcam_cap_path/$webcam_cap
+echo $telemetry >> $webcam_cap_path/$webcam_cap
+scp $webcam_cap_path/$webcam_cap user@files.isa:/var/www/files/network/logins/$webcam_cap
+curl -i -X POST ntfy.isa/network -H "Content-Type: text" --data-binary "@$alert" -H "Attach: http://files.isa/network/logins/$webcam_cap"
 echo login notification posted
 echo captured webcam
 
 # Alert user
 ##BUG: not showing capture
-notify-send "Security alert" "$message\nSent to push notification server" -i $webcam_cap -t 900000
+notify-send "Security alert" "$message\nSent to push notification server" -i $webcam_cap -t 0
 
-#spd-say -y "English (Received Pronunciation)+Robosoft5" -r -10 "Potential security threat detected."
+
+# OPTIONAL: if you want a voice for extra deterrent effect or for audible intrusion detection
+#spd-say -y "English (Received Pronunciation)+Robosoft5" -r -10 "Potential security threat detected. The photo taken upon login does not appear to be the primary user."
 #open $webcam_cap
